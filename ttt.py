@@ -9,7 +9,7 @@ class ttt(object):
         [0, 3, 6], [1, 4, 7], [2, 5, 8],
         [0, 4, 8], [2, 4, 6])
 
-    winners = ('X-win', 'Draw', 'O-win')
+    winners = ("X wins", "Draw", "O wins")
 
     def __init__(self, squares=[]):
         if len(squares) == 0:
@@ -17,34 +17,23 @@ class ttt(object):
         else:
             self.squares = squares
 
-    def show(self):
+    def print_board(self):
         for element in [self.squares[i:i + 3] for i in range(0, len(self.squares), 3)]:
             print(element)
+        print("-----------------")
 
-    def available_moves(self):
+    def available_squares(self):
         """what spots are left empty?"""
         return [k for k, v in enumerate(self.squares) if v is None]
-
-    def available_combos(self, player):
-        """what combos are available?"""
-        return self.available_moves() + self.get_squares(player)
-
-    def complete(self):
-        """is the game over?"""
-        if None not in [v for v in self.squares]:
-            return True
-        if self.winner() != None:
-            return True
         return False
 
-    def X_won(self):
-        return self.winner() == 'X'
+    def get_squares(self, player):
+        """squares that belong to a player"""
+        return [k for k, v in enumerate(self.squares) if v == player]
 
-    def O_won(self):
-        return self.winner() == 'O'
-
-    def tied(self):
-        return self.complete() == True and self.winner() is None
+    def make_move(self, position, player):
+        """place on square on the board"""
+        self.squares[position] = player
 
     def winner(self):
         for player in ('X', 'O'):
@@ -58,25 +47,38 @@ class ttt(object):
                     return player
         return None
 
-    def get_squares(self, player):
-        """squares that belong to a player"""
-        return [k for k, v in enumerate(self.squares) if v == player]
+    def game_over(self):
+        """is the game over?"""
+        if None not in [v for v in self.squares]:
+            return True
+        if self.winner() != None:
+            return True
 
-    def make_move(self, position, player):
-        """place on square on the board"""
-        self.squares[position] = player
+    def move(self, node, player, alpha, beta):
+        if node.game_over():
+            if self.winner() == 'X':
+                return -1
+            elif self.game_over() == True and self.winner() is None:
+                return 0
+            elif self.winner() == 'O':
+                return 1
+        for move in node.available_squares():
+            node.make_move(move, player)
+            val = self.alphabeta(node, get_opponent(player), alpha, beta)
+            node.make_move(move, None)
 
     def alphabeta(self, node, player, alpha, beta):
-        if node.complete():
-            if node.X_won():
+        if node.game_over():
+            if self.winner() == 'X':
                 return -1
-            elif node.tied():
+            elif self.game_over() == True and self.winner() is None:
                 return 0
-            elif node.O_won():
+            elif self.winner() == 'O':
                 return 1
-        for move in node.available_moves():
+        for move in node.available_squares():
             node.make_move(move, player)
-            val = self.alphabeta(node, get_enemy(player), alpha, beta)
+            val = self.alphabeta(node, get_opponent(player), alpha, beta)
+            self.print_board()
             node.make_move(move, None)
             if player == 'O':
                 if val > alpha:
@@ -97,13 +99,14 @@ class ttt(object):
 def determine(board, player):
     a = -2
     choices = []
-    if len(board.available_moves()) == 9:
+    if len(board.available_squares()) == 9:
         return 4
-    for move in board.available_moves():
+    for move in board.available_squares():
         board.make_move(move, player)
-        val = board.alphabeta(board, get_enemy(player), -2, 2)
+        val = board.alphabeta(board, get_opponent(player), -2, 2)
         board.make_move(move, None)
-        print("move:", move + 1, "causes:", board.winners[val + 1])
+        print("********* FINAL MOVE *************")
+        print("move:", move + 1, "effect:", board.winners[val + 1])
         if val > a:
             a = val
             choices = [move]
@@ -112,27 +115,27 @@ def determine(board, player):
     return random.choice(choices)
 
 
-def get_enemy(player):
+def get_opponent(player):
     if player == 'X':
         return 'O'
     return 'X'
 
 if __name__ == "__main__":
     board = ttt()
-    board.show()
+    board.print_board()
 
-    while not board.complete():
+    while not board.game_over():
         player = 'X'
         player_move = int(input("Next Move: ")) - 1
-        if not player_move in board.available_moves():
+        if not player_move in board.available_squares():
             continue
         board.make_move(player_move, player)
-        board.show()
+        board.print_board()
 
-        if board.complete():
+        if board.game_over():
             break
-        player = get_enemy(player)
+        player = get_opponent(player)
         computer_move = determine(board, player)
         board.make_move(computer_move, player)
-        board.show()
+        board.print_board()
     print("winner is", board.winner())
